@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flappy Bird</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: skyblue;
+      font-family: Arial;
+      user-select: none;
+    }
+
+    #restartBtn {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 12px 25px;
+      background: #ffcc00;
+      border: none;
+      border-radius: 12px;
+      font-size: 20px;
+      cursor: pointer;
+      box-shadow: 0px 4px 8px rgba(0,0,0,0.3);
+    }
+
+    canvas {
+      display: block;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+
+  <button id="restartBtn">🔄 إعادة اللعب</button>
+  <canvas id="game" width="400" height="600"></canvas>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const restartBtn = document.getElementById("restartBtn");
+
+    let frames = 0;
+    const gravity = 0.25;
+    const jump = 4.5;
+    let score = 0;
+    let gameOver = false;
+
+    // --- الطائر المحسن ---
+    const bird = {
+      x: 80,
+      y: 200,
+      w: 34,
+      h: 24,
+      radius: 14,
+      velocity: 0,
+      wingAngle: 0,
+      flapSpeed: 0.25,
+
+      draw() {
+        // الجسم
+        ctx.fillStyle = "#FFD700";
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // العين
+        ctx.fillStyle = "white";
+        ctx.beginPath();
+        ctx.arc(this.x + 6, this.y - 4, 6, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "black";
+        ctx.beginPath();
+        ctx.arc(this.x + 8, this.y - 4, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // الجناح المتحرك
+        ctx.save();
+        ctx.translate(this.x - 5, this.y + 2);
+        ctx.rotate(Math.sin(this.wingAngle) * 0.5);
+        ctx.fillStyle = "#FFB300";
+        ctx.fillRect(-10, -3, 20, 6);
+        ctx.restore();
+
+        this.wingAngle += this.flapSpeed;
+      },
+
+      update() {
+        this.velocity += gravity;
+        this.y += this.velocity;
+
+        if (this.y + this.radius >= canvas.height - 60) {
+          gameOver = true;
+        }
+      },
+
+      flap() {
+        this.velocity = -jump;
+      }
+    };
+
+    // --- الأعمدة المحسّنة ---
+    const pipes = [];
+    const pipeWidth = 60;
+    const pipeGap = 140;
+
+    function addPipe() {
+      const topHeight = Math.random() * (canvas.height / 2);
+      const bottomY = topHeight + pipeGap;
+      pipes.push({ x: canvas.width, topHeight, bottomY });
+    }
+
+    function drawPipes() {
+      for (const pipe of pipes) {
+        // أنبوب علوي
+        ctx.fillStyle = "#0A8A0A";
+        ctx.fillRect(pipe.x, 0, pipeWidth, pipe.topHeight);
+
+        ctx.fillStyle = "#046E04";
+        ctx.fillRect(pipe.x - 3, pipe.topHeight - 20, pipeWidth + 6, 20);
+
+        // أنبوب سفلي
+        ctx.fillStyle = "#0A8A0A";
+        ctx.fillRect(pipe.x, pipe.bottomY, pipeWidth, canvas.height - pipe.bottomY);
+
+        ctx.fillStyle = "#046E04";
+        ctx.fillRect(pipe.x - 3, pipe.bottomY, pipeWidth + 6, 20);
+      }
+    }
+
+    function updatePipes() {
+      for (const pipe of pipes) {
+        pipe.x -= 2;
+
+        // التصادم
+        if (
+          bird.x + bird.radius > pipe.x &&
+          bird.x - bird.radius < pipe.x + pipeWidth &&
+          (bird.y - bird.radius < pipe.topHeight ||
+            bird.y + bird.radius > pipe.bottomY)
+        ) {
+          gameOver = true;
+        }
+
+        if (pipe.x + pipeWidth === bird.x) score++;
+      }
+
+      if (pipes.length && pipes[0].x + pipeWidth < 0) pipes.shift();
+      if (frames % 90 === 0) addPipe();
+    }
+
+    // --- الأرض ---
+    function drawGround() {
+      ctx.fillStyle = "#B5651D";
+      ctx.fillRect(0, canvas.height - 60, canvas.width, 60);
+
+      ctx.fillStyle = "#7A4515";
+      ctx.fillRect(0, canvas.height - 60, canvas.width, 10);
+    }
+
+    // --- النقاط ---
+    function drawScore() {
+      ctx.fillStyle = "white";
+      ctx.font = "28px Arial Black";
+      ctx.fillText(score, canvas.width / 2 - 10, 50);
+    }
+
+    // --- الحلقة الأساسية ---
+    function loop() {
+      if (gameOver) {
+        restartBtn.style.display = "block";
+        return;
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      bird.draw();
+      drawPipes();
+      drawGround();
+      drawScore();
+
+      bird.update();
+      updatePipes();
+
+      frames++;
+      requestAnimationFrame(loop);
+    }
+
+    canvas.addEventListener("click", () => bird.flap());
+    restartBtn.addEventListener("click", () => location.reload());
+
+    addPipe();
+    loop();
+  </script>
+
+</body>
+</html>
